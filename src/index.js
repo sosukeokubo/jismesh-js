@@ -429,8 +429,72 @@ function toMeshPoint(meshCode, latMultiplier = 0, lonMultiplier = 0) {
   return [lat, lon];
 }
 
+const _toUnitLatLons = {
+  1: { unitLat: _unitLv1Lat, unitLon: _unitLv1Lon },
+  2: { unitLat: _unitLv2Lat, unitLon: _unitLv2Lon },
+  3: { unitLat: _unitLv3Lat, unitLon: _unitLv3Lon },
+  4: { unitLat: _unitLv4Lat, unitLon: _unitLv4Lon },
+  5: { unitLat: _unitLv5Lat, unitLon: _unitLv5Lon },
+  6: { unitLat: _unitLv6Lat, unitLon: _unitLv6Lon },
+  40000: { unitLat: _unit40000Lat, unitLon: _unit40000Lon },
+  20000: { unitLat: _unit20000Lat, unitLon: _unit20000Lon },
+  16000: { unitLat: _unit16000Lat, unitLon: _unit16000Lon },
+  8000: { unitLat: _unit8000Lat, unitLon: _unit8000Lon },
+  5000: { unitLat: _unit5000Lat, unitLon: _unit5000Lon },
+  4000: { unitLat: _unit4000Lat, unitLon: _unit4000Lon },
+  2500: { unitLat: _unit2500Lat, unitLon: _unit2500Lon },
+  2000: { unitLat: _unit2000Lat, unitLon: _unit2000Lon },
+}
+
+function unitLat(level) {
+  return _toUnitLatLons[level].unitLat;
+}
+
+function unitLon(level) {
+  return _toUnitLatLons[level].unitLon;
+}
+
+function* _makeEnvelope(latS, lonW, latN, lonE, toLevel) {
+  const toUnitLat = unitLat(toLevel);
+  const toUnitLon = unitLon(toLevel);
+  const toLats = [];
+  for (let lat = latS; lat < latN; lat += toUnitLat) {
+    toLats.push(lat);
+  }
+  const toLons = [];
+  for (let lon = lonW; lon < lonE; lon += toUnitLon) {
+    toLons.push(lon);
+  }
+  for (const toLat of toLats) {
+    for (const toLon of toLons) {
+      yield toMeshCode(toLat, toLon, toLevel);
+    }
+  }
+}
+
+function* toEnvelope(meshCodeSW, meshCodeNE) {
+  meshCodeSW = String(meshCodeSW);
+  meshCodeNE = String(meshCodeNE);
+  const levelSW = toMeshLevel(meshCodeSW);
+  const levelNE = toMeshLevel(meshCodeNE);
+  if (levelSW !== levelNE) {
+    throw new Error("the level must be the same for meshCodeSW and meshCodeNE.");
+  }
+
+  const marginLat = 0.5
+  const marginLon = 0.5
+
+  const [latS, lonW] = toMeshPoint(meshCodeSW, 0 + marginLat, 0 + marginLon);
+  const [latN, lonE] = toMeshPoint(meshCodeNE, 1, 1);
+
+  yield* _makeEnvelope(latS, lonW, latN, lonE, levelSW);
+}
+
 module.exports = {
   toMeshCode,
   toMeshPoint,
   toMeshLevel,
+  toEnvelope,
+  unitLat,
+  unitLon,
 };
